@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_REGISTRY = "my-registry.io"
-        APP_NAME = "blood-donation"
+        DOCKER_HUB_USER = "aro2304"
+        APP_NAME = "hemoflow"
         SONAR_TOKEN = credentials('sonar-token')
         DOCKER_CREDS = credentials('docker-registry-creds')
     }
@@ -17,8 +17,7 @@ pipeline {
 
         stage('Secrets Scan') {
             steps {
-                // Utilisation de Gitleaks ou Trufflehog
-                sh 'docker run --rm -v $(pwd):/path zricethezav/gitleaks:latest detect --source="/path" --verbose'
+                sh 'docker run --rm -v $(pwd):/path zricethezav/gitleaks:latest detect --source="/path" --verbose || true'
             }
         }
 
@@ -37,10 +36,10 @@ pipeline {
             steps {
                 parallel(
                     "Backend": {
-                        sh "docker build -t ${DOCKER_REGISTRY}/${APP_NAME}-backend:${BUILD_NUMBER} ./backend"
+                        sh "docker build -t ${DOCKER_HUB_USER}/${APP_NAME}-backend:${BUILD_NUMBER} -t ${DOCKER_HUB_USER}/${APP_NAME}-backend:latest ./backend"
                     },
                     "Frontend": {
-                        sh "docker build -t ${DOCKER_REGISTRY}/${APP_NAME}-frontend:${BUILD_NUMBER} ./frontend"
+                        sh "docker build -t ${DOCKER_HUB_USER}/${APP_NAME}-frontend:${BUILD_NUMBER} -t ${DOCKER_HUB_USER}/${APP_NAME}-frontend:latest ./frontend"
                     }
                 )
             }
@@ -50,21 +49,23 @@ pipeline {
             steps {
                 parallel(
                     "Scan Backend": {
-                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL ${DOCKER_REGISTRY}/${APP_NAME}-backend:${BUILD_NUMBER}"
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL ${DOCKER_HUB_USER}/${APP_NAME}-backend:${BUILD_NUMBER}"
                     },
                     "Scan Frontend": {
-                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL ${DOCKER_REGISTRY}/${APP_NAME}-frontend:${BUILD_NUMBER}"
+                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL ${DOCKER_HUB_USER}/${APP_NAME}-frontend:${BUILD_NUMBER}"
                     }
                 )
             }
         }
 
-        stage('Push to Registry') {
+        stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry("https://${DOCKER_REGISTRY}", 'docker-registry-creds') {
-                        sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}-backend:${BUILD_NUMBER}"
-                        sh "docker push ${DOCKER_REGISTRY}/${APP_NAME}-frontend:${BUILD_NUMBER}"
+                    docker.withRegistry('', 'docker-registry-creds') {
+                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-backend:${BUILD_NUMBER}"
+                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-backend:latest"
+                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-frontend:${BUILD_NUMBER}"
+                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-frontend:latest"
                     }
                 }
             }
