@@ -24,7 +24,7 @@ pipeline {
             steps {
                 script {
                     def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarQube') {
+                    withSonarQubeEnv {
                         sh "${scannerHome}/bin/sonar-scanner"
                     }
                 }
@@ -35,10 +35,10 @@ pipeline {
             steps {
                 parallel(
                     "Backend": {
-                        sh "docker build -t ${DOCKER_HUB_USER}/${APP_NAME}-backend:${BUILD_NUMBER} -t ${DOCKER_HUB_USER}/${APP_NAME}-backend:latest ./backend"
+                        sh 'docker build -t $DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER -t $DOCKER_HUB_USER/$APP_NAME-backend:latest ./backend'
                     },
                     "Frontend": {
-                        sh "docker build -t ${DOCKER_HUB_USER}/${APP_NAME}-frontend:${BUILD_NUMBER} -t ${DOCKER_HUB_USER}/${APP_NAME}-frontend:latest ./frontend"
+                        sh 'docker build -t $DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER -t $DOCKER_HUB_USER/$APP_NAME-frontend:latest ./frontend'
                     }
                 )
             }
@@ -48,10 +48,10 @@ pipeline {
             steps {
                 parallel(
                     "Scan Backend": {
-                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL ${DOCKER_HUB_USER}/${APP_NAME}-backend:${BUILD_NUMBER}"
+                        sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL $DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER'
                     },
                     "Scan Frontend": {
-                        sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL ${DOCKER_HUB_USER}/${APP_NAME}-frontend:${BUILD_NUMBER}"
+                        sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL $DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER'
                     }
                 )
             }
@@ -61,10 +61,10 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'docker-registry-creds') {
-                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-backend:${BUILD_NUMBER}"
-                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-backend:latest"
-                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-frontend:${BUILD_NUMBER}"
-                        sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}-frontend:latest"
+                        sh 'docker push $DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER'
+                        sh 'docker push $DOCKER_HUB_USER/$APP_NAME-backend:latest'
+                        sh 'docker push $DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER'
+                        sh 'docker push $DOCKER_HUB_USER/$APP_NAME-frontend:latest'
                     }
                 }
             }
@@ -73,7 +73,7 @@ pipeline {
 
     post {
         always {
-            sh "docker logout ${DOCKER_REGISTRY} || true"
+            sh 'docker logout $DOCKER_REGISTRY || true'
             cleanWs()
         }
         failure {
