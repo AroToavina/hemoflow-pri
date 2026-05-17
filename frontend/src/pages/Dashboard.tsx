@@ -1,5 +1,5 @@
 import React from 'react';
-import { useStats, useTrends } from '../hooks/use-dashboard-data';
+import { useStats } from '../hooks/use-dashboard-data';
 import { DashboardTrends } from '../components/dashboard-trends';
 import { Users, Droplets, Building2, ArrowUpRight, ArrowDownRight } from "lucide-react";
 

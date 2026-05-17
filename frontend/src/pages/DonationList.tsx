@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import AddDonationModal from '../components/AddDonationModal';
-import { Droplets, Plus, Search, Calendar } from 'lucide-react';
+import { Plus, Search, Calendar } from 'lucide-react';
 
 interface Donation {
     _id: string;

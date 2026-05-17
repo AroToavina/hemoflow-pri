@@ -44,7 +44,7 @@ export function DashboardTrends() {
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
                 cursor={{ fill: "var(--surface-elevated)" }}
-                formatter={(v: number) => [`${v} dons`, "Volume"]}
+                formatter={(v: any) => [`${v} dons`, "Volume"]}
               />
               <Bar dataKey="dons" fill="var(--blood-600)" radius={[6, 6, 0, 0]} maxBarSize={26} />
             </BarChart>
@@ -76,7 +76,7 @@ export function DashboardTrends() {
               <YAxis tick={AXIS_TICK} tickLine={false} axisLine={false} width={32} />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                formatter={(v: number) => [`${v} L`, "Stock"]}
+                formatter={(v: any) => [`${v} L`, "Stock"]}
               />
               <Area
                 type="monotone"
@@ -124,7 +124,7 @@ export function DashboardTrends() {
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
                 cursor={{ fill: "var(--surface-elevated)" }}
-                formatter={(v: number, _n, p) => [
+                formatter={(v: any, _n, p: any) => [
                   `${v}% (${p.payload.dispo}/${p.payload.total})`,
                   "Disponibilité",
                 ]}
