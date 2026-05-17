@@ -4,8 +4,7 @@ pipeline {
     environment {
         DOCKER_HUB_USER = "aro2304"
         APP_NAME = "hemoflow"
-        SONAR_TOKEN = credentials('sonar-token')
-        DOCKER_CREDS = credentials('docker-registry-creds')
+        DOCKER_REGISTRY = ""
     }
 
     stages {
