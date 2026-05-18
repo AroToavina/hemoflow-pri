@@ -58,6 +58,20 @@ pipeline {
                 }
             }
         }
+
+        stage('Sign Images') {
+            steps {
+                withCredentials([file(credentialsId: 'cosign-key', variable: 'COSIGN_KEY'), string(credentialsId: 'cosign-password', variable: 'COSIGN_PASSWORD')]) {
+                    script {
+                        def cosignCmd = "docker run --rm -v ${COSIGN_KEY}:/tmp/cosign.key -v /var/run/docker.sock:/var/run/docker.sock -v /home/jenkins/.docker/config.json:/root/.docker/config.json -e COSIGN_PASSWORD=${COSIGN_PASSWORD} gcr.io/projectsigstore/cosign:v2.4.1"
+                        sh "${cosignCmd} sign --key /tmp/cosign.key --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER"
+                        sh "${cosignCmd} sign --key /tmp/cosign.key --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-backend:latest"
+                        sh "${cosignCmd} sign --key /tmp/cosign.key --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER"
+                        sh "${cosignCmd} sign --key /tmp/cosign.key --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-frontend:latest"
+                    }
+                }
+            }
+        }
     }
 
     post {

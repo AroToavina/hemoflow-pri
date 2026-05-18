@@ -33,3 +33,7 @@ yarn-error.log*
 .dockerignore
 
 .env
+
+# Cosign keys
+cosign.key
+cosign.pub

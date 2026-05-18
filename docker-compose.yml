@@ -1,10 +1,10 @@
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: aro2304/hemoflow-backend:latest
     container_name: blood-donation-api
     restart: unless-stopped
+    ports:
+      - "5000:5000"
     networks:
       - backend-nw
     environment:
@@ -18,9 +18,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: aro2304/hemoflow-frontend:latest
     container_name: blood-donation-ui
     restart: unless-stopped
     networks:
