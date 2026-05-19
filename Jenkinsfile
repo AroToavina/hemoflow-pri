@@ -71,7 +71,6 @@ pipeline {
                             set +x
                             # Create a temporary docker config for cosign
                             TMP_DOCKER_CONFIG=$(mktemp -d)
-                            # Ensure the directory is accessible by any user (cosign might run as non-root)
                             chmod 777 "$TMP_DOCKER_CONFIG"
                             
                             echo "$DOCKER_PASS" | docker --config "$TMP_DOCKER_CONFIG" login -u "$DOCKER_USER" --password-stdin
@@ -79,23 +78,26 @@ pipeline {
                             
                             COSIGN_KEY_CONTENT=$(cat "$COSIGN_KEY_PATH")
                             
-                            # Common docker run options for signing
-                            # We set DOCKER_CONFIG to /auth and mount our temp config there
-                            COSIGN_RUN="docker run --rm \
-                                -e COSIGN_PASSWORD=$COSIGN_PASSWORD \
-                                -e COSIGN_KEY=$COSIGN_KEY_CONTENT \
-                                -e DOCKER_CONFIG=/auth \
-                                -v $TMP_DOCKER_CONFIG:/auth \
-                                -v /var/run/docker.sock:/var/run/docker.sock \
-                                gcr.io/projectsigstore/cosign:v2.4.1"
+                            # Use a function to avoid multi-line expansion issues in variables
+                            sign_image() {
+                                image_name=$1
+                                docker run --rm \
+                                    -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
+                                    -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
+                                    -e DOCKER_CONFIG=/auth \
+                                    -v "$TMP_DOCKER_CONFIG":/auth \
+                                    -v /var/run/docker.sock:/var/run/docker.sock \
+                                    gcr.io/projectsigstore/cosign:v2.4.1 \
+                                    sign --key env://COSIGN_KEY --tlog-upload=false "$image_name"
+                            }
                             
                             echo "Signing Backend images..."
-                            $COSIGN_RUN sign --key env://COSIGN_KEY --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER
-                            $COSIGN_RUN sign --key env://COSIGN_KEY --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-backend:latest
+                            sign_image "$DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER"
+                            sign_image "$DOCKER_HUB_USER/$APP_NAME-backend:latest"
                             
                             echo "Signing Frontend images..."
-                            $COSIGN_RUN sign --key env://COSIGN_KEY --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER
-                            $COSIGN_RUN sign --key env://COSIGN_KEY --tlog-upload=false $DOCKER_HUB_USER/$APP_NAME-frontend:latest
+                            sign_image "$DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER"
+                            sign_image "$DOCKER_HUB_USER/$APP_NAME-frontend:latest"
                             
                             # Cleanup
                             rm -rf "$TMP_DOCKER_CONFIG"
