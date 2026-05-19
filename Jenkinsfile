@@ -62,52 +62,61 @@ pipeline {
         stage('Sign Images') {
             steps {
                 script {
-                    docker.withRegistry('', 'docker-registry-creds') {
-                        withCredentials([file(credentialsId: 'cosign-key', variable: 'COSIGN_KEY_PATH'), string(credentialsId: 'cosign-password', variable: 'COSIGN_PASSWORD')]) {
-                            sh '''
-                                set +x
-                                COSIGN_KEY_CONTENT=$(cat "$COSIGN_KEY_PATH")
-                                
-                                echo "Signing Backend images..."
-                                docker run --rm \
-                                    -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
-                                    -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
-                                    -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v /home/jenkins/.docker/config.json:/root/.docker/config.json \
-                                    gcr.io/projectsigstore/cosign:v2.4.1 \
-                                    sign --key env://COSIGN_KEY --tlog-upload=false \
-                                    $DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER
-                                
-                                docker run --rm \
-                                    -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
-                                    -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
-                                    -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v /home/jenkins/.docker/config.json:/root/.docker/config.json \
-                                    gcr.io/projectsigstore/cosign:v2.4.1 \
-                                    sign --key env://COSIGN_KEY --tlog-upload=false \
-                                    $DOCKER_HUB_USER/$APP_NAME-backend:latest
-                                
-                                echo "Signing Frontend images..."
-                                docker run --rm \
-                                    -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
-                                    -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
-                                    -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v /home/jenkins/.docker/config.json:/root/.docker/config.json \
-                                    gcr.io/projectsigstore/cosign:v2.4.1 \
-                                    sign --key env://COSIGN_KEY --tlog-upload=false \
-                                    $DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER
-                                
-                                docker run --rm \
-                                    -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
-                                    -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
-                                    -v /var/run/docker.sock:/var/run/docker.sock \
-                                    -v /home/jenkins/.docker/config.json:/root/.docker/config.json \
-                                    gcr.io/projectsigstore/cosign:v2.4.1 \
-                                    sign --key env://COSIGN_KEY --tlog-upload=false \
-                                    $DOCKER_HUB_USER/$APP_NAME-frontend:latest
-                                set -x
-                            '''
-                        }
+                    withCredentials([
+                        usernamePassword(credentialsId: 'docker-registry-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS'),
+                        file(credentialsId: 'cosign-key', variable: 'COSIGN_KEY_PATH'),
+                        string(credentialsId: 'cosign-password', variable: 'COSIGN_PASSWORD')
+                    ]) {
+                        sh '''
+                            set +x
+                            # Create a temporary docker config for cosign
+                            TMP_DOCKER_CONFIG=$(mktemp -d)
+                            echo "$DOCKER_PASS" | docker --config "$TMP_DOCKER_CONFIG" login -u "$DOCKER_USER" --password-stdin
+                            
+                            COSIGN_KEY_CONTENT=$(cat "$COSIGN_KEY_PATH")
+                            
+                            echo "Signing Backend images..."
+                            docker run --rm \
+                                -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
+                                -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
+                                -v "$TMP_DOCKER_CONFIG":/root/.docker \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                gcr.io/projectsigstore/cosign:v2.4.1 \
+                                sign --key env://COSIGN_KEY --tlog-upload=false \
+                                $DOCKER_HUB_USER/$APP_NAME-backend:$BUILD_NUMBER
+                            
+                            docker run --rm \
+                                -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
+                                -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
+                                -v "$TMP_DOCKER_CONFIG":/root/.docker \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                gcr.io/projectsigstore/cosign:v2.4.1 \
+                                sign --key env://COSIGN_KEY --tlog-upload=false \
+                                $DOCKER_HUB_USER/$APP_NAME-backend:latest
+                            
+                            echo "Signing Frontend images..."
+                            docker run --rm \
+                                -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
+                                -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
+                                -v "$TMP_DOCKER_CONFIG":/root/.docker \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                gcr.io/projectsigstore/cosign:v2.4.1 \
+                                sign --key env://COSIGN_KEY --tlog-upload=false \
+                                $DOCKER_HUB_USER/$APP_NAME-frontend:$BUILD_NUMBER
+                            
+                            docker run --rm \
+                                -e COSIGN_PASSWORD="$COSIGN_PASSWORD" \
+                                -e COSIGN_KEY="$COSIGN_KEY_CONTENT" \
+                                -v "$TMP_DOCKER_CONFIG":/root/.docker \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                gcr.io/projectsigstore/cosign:v2.4.1 \
+                                sign --key env://COSIGN_KEY --tlog-upload=false \
+                                $DOCKER_HUB_USER/$APP_NAME-frontend:latest
+                            
+                            # Cleanup
+                            rm -rf "$TMP_DOCKER_CONFIG"
+                            set -x
+                        '''
                     }
                 }
             }
